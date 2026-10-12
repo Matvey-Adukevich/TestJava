@@ -60,21 +60,22 @@ public class TextCorrectionService {
         int options = buildOptions(chunk);
         String langCode = "RU".equals(language) ? "ru" : "en";
 
-        YandexSpellerRequest request = new YandexSpellerRequest(chunk, langCode, options);
-
         try {
-            List<List<YandexSpellerResponse>> responses = webClient.post()
+            List<YandexSpellerResponse> responses = webClient.post()
                     .uri(YANDEX_SPELLER_URL)
-                    .bodyValue(List.of(request))
+                    .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
+                    .bodyValue("text=" + java.net.URLEncoder.encode(chunk, java.nio.charset.StandardCharsets.UTF_8) +
+                            "&lang=" + langCode +
+                            "&options=" + options)
                     .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<List<List<YandexSpellerResponse>>>() {})
+                    .bodyToMono(new ParameterizedTypeReference<List<YandexSpellerResponse>>() {})
                     .block();
 
             if (responses == null || responses.isEmpty()) {
                 return chunk;
             }
 
-            return applyCorrections(chunk, responses.get(0));
+            return applyCorrections(chunk, responses);
         } catch (Exception e) {
             logger.error("Error calling Yandex Speller API", e);
             throw new RuntimeException("Failed to call Yandex Speller API: " + e.getMessage(), e);
